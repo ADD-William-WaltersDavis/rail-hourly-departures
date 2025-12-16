@@ -22,7 +22,6 @@ fn main() -> Result<()> {
 
     let mut raw_cif_text = String::new();
     // for file in ["timetables_2025_Q4_Rail", "timetables_2025_Q4_SubwayMetro", "timetables_2025_Q4_TramStreetcarLightRail"] {
-    // for file in ["timetables_2025_Q4_Rail"] {
     let file_path = format!("{}/{}.cif", args.input_dir_path, "timetables_2025_Q4_Rail");
     raw_cif_text.push_str(&records::read_file(&file_path));
     // }
@@ -39,9 +38,6 @@ fn main() -> Result<()> {
         &args.output_directory,
         &hour_grouped,
     )?;
-
-    // write_json_file("pt_graph_walk".to_string(), &args.output_directory, &graph_ouput.pt_graph_walk)?;
-
 
     Ok(())
 }

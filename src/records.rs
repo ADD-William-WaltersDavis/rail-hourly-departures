@@ -136,12 +136,12 @@ impl FromStr for RecordIdentifier {
 #[derive(Debug, Clone)]
 pub struct JourneyHeader {
     pub status: Status,
-    pub operator: String,
+    pub _operator: String,
     pub _unique_journey_identifier: String,
     pub operating_days: OperatingDays,
-    pub route_number: String,
-    pub vehicle_type: PublicTransportMode,
-    pub route_direction: RouteDirection,
+    pub _route_number: String,
+    pub _vehicle_type: PublicTransportMode,
+    pub _route_direction: RouteDirection,
 }
 
 impl JourneyHeader {
@@ -149,18 +149,13 @@ impl JourneyHeader {
         // Parse the QS string and extract the relevant fields
         JourneyHeader {
             status: Status::from_str(&qs_string[2..3]).unwrap(),
-            operator: qs_string[3..7].trim().to_string(),
+            _operator: qs_string[3..7].trim().to_string(),
             _unique_journey_identifier: qs_string[7..13].trim().to_string(),
             operating_days: OperatingDays::from_cif_str(&qs_string[29..36]),
-            route_number: qs_string[38..42].trim().to_string(),
-            vehicle_type: PublicTransportMode::from_str(&qs_string[48..56]).unwrap(),
-            route_direction: RouteDirection::from_str(&qs_string[64..65]).unwrap(),
+            _route_number: qs_string[38..42].trim().to_string(),
+            _vehicle_type: PublicTransportMode::from_str(&qs_string[48..56]).unwrap(),
+            _route_direction: RouteDirection::from_str(&qs_string[64..65]).unwrap(),
         }
-    }
-    /// Returns a unique reference for the journey header based on the vehicle type, route number, and route direction.
-    /// This is used to identify the journey uniquely in the system for grouping links.
-    pub fn get_unique_reference(&self) -> String {
-        format!("{}_{}_{}", self.vehicle_type.to_str(), self.route_number, self.route_direction.to_str())
     }
 }
 
@@ -264,7 +259,7 @@ impl TimeConversion for SecondsPastMidnight {
 pub struct JourneyRecordStop {
     pub atco_code: Atco,
     pub activity_flag: ActivityFlag,
-    pub arrival_time: Option<SecondsPastMidnight>,
+    pub _arrival_time: Option<SecondsPastMidnight>,
     pub departure_time: Option<SecondsPastMidnight>,
 }
 
@@ -275,7 +270,7 @@ impl JourneyRecordStop {
         Some(JourneyRecordStop {
             atco_code,
             activity_flag: ActivityFlag::PickUpOnly, // As origin stop
-            arrival_time: None,
+            _arrival_time: None,
             departure_time: Some(SecondsPastMidnight::from_24hr_str(&s[14..18])),
         })
     }
@@ -284,7 +279,7 @@ impl JourneyRecordStop {
         let atco_code = Atco::from_mapped_str(&s[2..14], atco_mapping)?;
         Some(JourneyRecordStop {
             atco_code,
-            arrival_time: Some(SecondsPastMidnight::from_24hr_str(&s[14..18])),
+            _arrival_time: Some(SecondsPastMidnight::from_24hr_str(&s[14..18])),
             departure_time: Some(SecondsPastMidnight::from_24hr_str(&s[18..22])),
             activity_flag: ActivityFlag::from_str(&s[22..23]).unwrap(),
         })
@@ -295,7 +290,7 @@ impl JourneyRecordStop {
         Some(JourneyRecordStop {
             atco_code,
             activity_flag: ActivityFlag::SetDownOnly, // As final stop
-            arrival_time: Some(SecondsPastMidnight::from_24hr_str(&s[14..18])),
+            _arrival_time: Some(SecondsPastMidnight::from_24hr_str(&s[14..18])),
             departure_time: None,
         })
     }

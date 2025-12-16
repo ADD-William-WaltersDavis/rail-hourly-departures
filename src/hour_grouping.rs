@@ -20,8 +20,6 @@ pub fn group(records: Vec<Record>, day: Day) -> HashMap<Atco, [u32; 24]> {
     let progress = progress_bar_for_count(records.len());
     for record in records.iter().progress_with(progress) {
         match record {
-            // When we find a JourneyHeader, we need to push the previous trip (current trip) if it's valid
-            // and then start a new trip by setting the current trip to the new header
             Record::JourneyHeader(header) => {
                 push_previous_trip_if_acceptable(
                     &mut hour_counts,
@@ -85,7 +83,7 @@ fn add_departure_hour_count(
         
         let hour = (departure_time.0 as f64 / 3600.0).floor() as usize;
         let counts = hour_counts.entry(trip_stop.atco_code.clone()).or_insert_with(empty_hour_counts);
-        counts[hour as usize] += 1;
+        counts[hour] += 1;
     } else {
         panic!("Trip stop without departure time at stop {:?}", trip_stop);
     }
