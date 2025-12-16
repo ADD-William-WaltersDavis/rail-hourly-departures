@@ -2,12 +2,12 @@ use connectivity::{progress_bar_for_count, PublicTransportMode, RouteDirection, 
 use fs_err::read_to_string;
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Eq,
     hash::Hash,
     str::FromStr,
-    collections::{HashMap, HashSet},
+    collections::HashMap,
 };
 
 /// Parse a CIF file from raw text format into a vector of Records where 
@@ -70,6 +70,7 @@ pub fn parse(raw_cif_text: String, config_path: &str) -> Vec<Record> {
                 RecordIdentifier::QO => JourneyRecordStop::from_qo_str(line, &atco_mapping).map(Record::JourneyRecordStop),
                 RecordIdentifier::QI => JourneyRecordStop::from_qi_str(line, &atco_mapping).map(Record::JourneyRecordStop),
                 RecordIdentifier::QT => JourneyRecordStop::from_qt_str(line, &atco_mapping).map(Record::JourneyRecordStop),
+                RecordIdentifier::QL => StopName::from_ql_str(line, &atco_mapping).map(Record::StopName),
                 _ => None,
             }
         })
@@ -95,6 +96,7 @@ fn read_mapping(config_path: &str) -> HashMap<Atco, Atco> {
 pub enum Record {
     JourneyHeader(JourneyHeader),
     JourneyRecordStop(JourneyRecordStop),
+    StopName(StopName),
 }
 
 #[derive(Debug)]
@@ -103,6 +105,7 @@ pub enum RecordIdentifier {
     QO, // Journey Origin Stop
     QI, // Journey Intermediate Stop
     QT, // Journey Destination Stop
+    QL, // Stop Name
     Other, // For any other record denotion which we don't use
 }
 
@@ -115,6 +118,7 @@ impl FromStr for RecordIdentifier {
             "QO" => Ok(RecordIdentifier::QO),
             "QI" => Ok(RecordIdentifier::QI),
             "QT" => Ok(RecordIdentifier::QT),
+            "QL" => Ok(RecordIdentifier::QL),
             _ => Ok(RecordIdentifier::Other),
         }
     }
@@ -297,7 +301,7 @@ impl JourneyRecordStop {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize)]
 pub struct Atco(pub String);
 impl FromStr for Atco {
     type Err = ();
@@ -345,5 +349,30 @@ impl FromStr for ActivityFlag {
             "N" => Ok(ActivityFlag::Neither),
             _ => Err(()),
         }
+    }
+}
+
+/// Denoted by "QL" in the CIF file
+#[derive(Debug)]
+pub struct StopName {
+    pub _status: Status,
+    pub atco_code: Atco,
+    pub name: String,
+}
+
+impl StopName {
+    fn from_ql_str(ql_string: &str, atco_mapping: &HashMap<Atco, Atco>) -> Option<Self> {
+        let atco_code = Atco::from_str(&ql_string[3..15]).unwrap();
+        // Drop the record if the ATCO code is already in the mapping as we will use the
+        // mapped stop instead of this one.
+        if atco_mapping.get(&atco_code).is_some() || atco_code.starts_with_999() {
+            return None;
+        }
+        // Parse the QL string and extract the relevant fields
+        Some(StopName {
+            _status: Status::from_str(&ql_string[2..3]).unwrap(),
+            atco_code,
+            name: ql_string[15..63].trim().replace(",", "").to_string(),
+        })
     }
 }

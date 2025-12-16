@@ -1,4 +1,6 @@
+mod hour_grouping;
 mod records;
+mod stops;
 
 use anyhow::Result;
 use clap::Parser;
@@ -20,13 +22,23 @@ fn main() -> Result<()> {
 
     let mut raw_cif_text = String::new();
     // for file in ["timetables_2025_Q4_Rail", "timetables_2025_Q4_SubwayMetro", "timetables_2025_Q4_TramStreetcarLightRail"] {
-    for file in ["timetables_2025_Q4_Rail"] {
-        let file_path = format!("{}/{}.cif", args.input_dir_path, file);
-        raw_cif_text.push_str(&records::read_file(&file_path));
-    }
+    // for file in ["timetables_2025_Q4_Rail"] {
+    let file_path = format!("{}/{}.cif", args.input_dir_path, "timetables_2025_Q4_Rail");
+    raw_cif_text.push_str(&records::read_file(&file_path));
+    // }
 
     let record_lines = records::parse(raw_cif_text, "./config");
     println!("Records len: {:?}", record_lines.len());
+    
+    let lookup = stops::create_lookup(&record_lines);
+    write_json_file("atco_stopname_lookup".to_string(), &args.output_directory, &lookup)?;
+
+    let hour_grouped = hour_grouping::group(record_lines, args.operating_day);
+    write_json_file(
+        "rail_hourly_departures".to_string(),
+        &args.output_directory,
+        &hour_grouped,
+    )?;
 
     // write_json_file("pt_graph_walk".to_string(), &args.output_directory, &graph_ouput.pt_graph_walk)?;
 
