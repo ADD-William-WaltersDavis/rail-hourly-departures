@@ -261,6 +261,7 @@ pub struct JourneyRecordStop {
     pub activity_flag: ActivityFlag,
     pub _arrival_time: Option<SecondsPastMidnight>,
     pub departure_time: Option<SecondsPastMidnight>,
+    pub is_first_stop: bool,
 }
 
 impl JourneyRecordStop {
@@ -272,6 +273,7 @@ impl JourneyRecordStop {
             activity_flag: ActivityFlag::PickUpOnly, // As origin stop
             _arrival_time: None,
             departure_time: Some(SecondsPastMidnight::from_24hr_str(&s[14..18])),
+            is_first_stop: true,
         })
     }
     /// Denoted by "QI" in the CIF file
@@ -282,6 +284,7 @@ impl JourneyRecordStop {
             _arrival_time: Some(SecondsPastMidnight::from_24hr_str(&s[14..18])),
             departure_time: Some(SecondsPastMidnight::from_24hr_str(&s[18..22])),
             activity_flag: ActivityFlag::from_str(&s[22..23]).unwrap(),
+            is_first_stop: false,
         })
     }
     /// Denoted by "QT" in the CIF file
@@ -292,6 +295,7 @@ impl JourneyRecordStop {
             activity_flag: ActivityFlag::SetDownOnly, // As final stop
             _arrival_time: Some(SecondsPastMidnight::from_24hr_str(&s[14..18])),
             departure_time: None,
+            is_first_stop: false,
         })
     }
 }

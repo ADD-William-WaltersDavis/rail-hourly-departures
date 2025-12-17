@@ -32,11 +32,11 @@ fn main() -> Result<()> {
     let lookup = stops::create_lookup(&record_lines);
     write_json_file("atco_stopname_lookup".to_string(), &args.output_directory, &lookup)?;
 
-    let hour_grouped = hour_grouping::group(record_lines, args.operating_day);
+    let hourly_departures = hour_grouping::group(record_lines, args.operating_day);
     write_json_file(
         "rail_hourly_departures".to_string(),
         &args.output_directory,
-        &hour_grouped,
+        &hourly_departures,
     )?;
 
     Ok(())
