@@ -1,25 +1,22 @@
-use connectivity::{progress_bar_for_count, PublicTransportMode, RouteDirection, SecondsPastMidnight};
+use connectivity::{
+    PublicTransportMode, RouteDirection, SecondsPastMidnight, progress_bar_for_count,
+};
 use fs_err::read_to_string;
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{
-    cmp::Eq,
-    hash::Hash,
-    str::FromStr,
-    collections::HashMap,
-};
+use std::{cmp::Eq, collections::HashMap, hash::Hash, str::FromStr};
 
-/// Parse a CIF file from raw text format into a vector of Records where 
+/// Parse a CIF file from raw text format into a vector of Records where
 /// each record corresponds to a line in the CIF file.
-/// 
+///
 /// Each line in the raw data starts with a two-character identifier.
 /// Can get more info on the CIF format here:
 /// https://admin.opendatani.gov.uk/dataset/6d9677cf-8d03-4851-985c-16f73f7dd5fb/resource/6c9a6067-55e5-48c7-bcdd-164d50f2ce30/download/atco-cif-spec1.pdf
-/// 
+///
 /// This function reads the file, splits it into lines and parses each line
 /// into a Record structure based on its identifier.
-/// 
+///
 /// Identifiers can be:
 /// QS - Journey Header
 /// QO - Journey Origin Stop
@@ -28,7 +25,7 @@ use std::{
 /// QL - Stop Name
 /// QB - Stop Location
 /// QR - Journey Repetition Record (not used in basemap data)
-/// 
+///
 /// An example of a timetable record in CIF format:
 /// QSNNXMT3     20241007202410131111111  YEL       Metro           O
 /// QO9400ZZTWSSH10000   T1  
@@ -39,11 +36,11 @@ use std::{
 /// QI9400ZZTWJRW200100010P   T1  
 /// QI9400ZZTWHBN200150015S   T1  
 /// QT9400ZZTWPLW20040   T1
-/// 
+///
 /// An example of a stop name/location record in CIF format:
 /// QLN9400ZZTWSSH1South Shields (Tyne and Wear Metro Station)      B        
 /// QBN9400ZZTWSSH1436344  567224                          
-/// 
+///
 pub fn parse(raw_cif_text: String, config_path: &str) -> Vec<Record> {
     println!("Parsing CIF file...");
     // Remove carriage returns and split the string into lines
@@ -67,10 +64,15 @@ pub fn parse(raw_cif_text: String, config_path: &str) -> Vec<Record> {
                 RecordIdentifier::QS => {
                     Some(Record::JourneyHeader(JourneyHeader::from_qs_str(line)))
                 }
-                RecordIdentifier::QO => JourneyRecordStop::from_qo_str(line, &atco_mapping).map(Record::JourneyRecordStop),
-                RecordIdentifier::QI => JourneyRecordStop::from_qi_str(line, &atco_mapping).map(Record::JourneyRecordStop),
-                RecordIdentifier::QT => JourneyRecordStop::from_qt_str(line, &atco_mapping).map(Record::JourneyRecordStop),
-                RecordIdentifier::QL => StopName::from_ql_str(line, &atco_mapping).map(Record::StopName),
+                RecordIdentifier::QO => JourneyRecordStop::from_qo_str(line, &atco_mapping)
+                    .map(Record::JourneyRecordStop),
+                RecordIdentifier::QI => JourneyRecordStop::from_qi_str(line, &atco_mapping)
+                    .map(Record::JourneyRecordStop),
+                RecordIdentifier::QT => JourneyRecordStop::from_qt_str(line, &atco_mapping)
+                    .map(Record::JourneyRecordStop),
+                RecordIdentifier::QL => {
+                    StopName::from_ql_str(line, &atco_mapping).map(Record::StopName)
+                }
                 _ => None,
             }
         })
@@ -101,11 +103,11 @@ pub enum Record {
 
 #[derive(Debug)]
 pub enum RecordIdentifier {
-    QS, // Journey Header
-    QO, // Journey Origin Stop
-    QI, // Journey Intermediate Stop
-    QT, // Journey Destination Stop
-    QL, // Stop Name
+    QS,    // Journey Header
+    QO,    // Journey Origin Stop
+    QI,    // Journey Intermediate Stop
+    QT,    // Journey Destination Stop
+    QL,    // Stop Name
     Other, // For any other record denotion which we don't use
 }
 

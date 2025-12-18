@@ -1,9 +1,9 @@
-use connectivity::{progress_bar_for_count, SecondsPastMidnight};
+use connectivity::{SecondsPastMidnight, progress_bar_for_count};
 use indicatif::ProgressIterator;
 use serde::Serialize;
 use std::collections::HashMap;
 
-use super::records::{ActivityFlag, Atco, Day, Record, JourneyHeader};
+use super::records::{ActivityFlag, Atco, Day, JourneyHeader, Record};
 
 #[derive(Clone, Debug)]
 pub struct TripStop {
@@ -50,16 +50,14 @@ pub fn group(records: Vec<Record>, day: Day) -> HashMap<Atco, HourlyDepartures> 
                     departure_time: stop.departure_time,
                     is_first_stop: stop.is_first_stop,
                 });
-
             }
             _ => {
                 // Ignore other records
                 continue;
             }
         }
-
     }
-    
+
     // Push the last trip if applicable
     push_previous_trip_if_acceptable(
         &mut hourly_departures,
@@ -68,7 +66,6 @@ pub fn group(records: Vec<Record>, day: Day) -> HashMap<Atco, HourlyDepartures> 
         &day,
     );
     hourly_departures
-
 }
 
 fn push_previous_trip_if_acceptable(
@@ -77,8 +74,12 @@ fn push_previous_trip_if_acceptable(
     current_trip_stops: &[TripStop],
     operating_day: &Day,
 ) {
-    if current_trip_stops.len() > 1 
-        && current_trip_header.as_ref().unwrap().operating_days.contains(operating_day) 
+    if current_trip_stops.len() > 1
+        && current_trip_header
+            .as_ref()
+            .unwrap()
+            .operating_days
+            .contains(operating_day)
         && current_trip_header.as_ref().unwrap().status.is_operating()
     {
         for stop in current_trip_stops {
@@ -97,16 +98,16 @@ fn add_departure_hour_count(
     trip_stop: &TripStop,
 ) {
     if let Some(departure_time) = trip_stop.departure_time {
-        
         let hour = (departure_time.0 as f64 / 3600.0).floor() as usize;
-        let departures = hourly_departures.entry(trip_stop.atco_code.clone()).or_insert_with(empty_hour_counts);
+        let departures = hourly_departures
+            .entry(trip_stop.atco_code.clone())
+            .or_insert_with(empty_hour_counts);
         departures.hour_counts[hour] += 1;
 
         // If this is the first stop of the journey, also increment journey starts
         if trip_stop.is_first_stop {
             departures.hour_counts_journey_starts[hour] += 1;
         }
-
     } else {
         panic!("Trip stop without departure time at stop {:?}", trip_stop);
     }

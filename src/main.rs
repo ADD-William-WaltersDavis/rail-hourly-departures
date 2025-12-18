@@ -1,3 +1,4 @@
+mod criteria;
 mod hour_grouping;
 mod records;
 mod stops;
@@ -16,7 +17,6 @@ struct Args {
     output_directory: String,
 }
 
-// #[rustfmt::skip]
 fn main() -> Result<()> {
     let args = Args::parse();
 
@@ -28,15 +28,20 @@ fn main() -> Result<()> {
 
     let record_lines = records::parse(raw_cif_text, "./config");
     println!("Records len: {:?}", record_lines.len());
-    
+
     let lookup = stops::create_lookup(&record_lines);
-    write_json_file("atco_stopname_lookup".to_string(), &args.output_directory, &lookup)?;
+    write_json_file(
+        "atco_stopname_lookup".to_string(),
+        &args.output_directory,
+        &lookup,
+    )?;
 
     let hourly_departures = hour_grouping::group(record_lines, args.operating_day);
+    let criteria_results = criteria::evaluate_criteria(&hourly_departures);
     write_json_file(
         "rail_hourly_departures".to_string(),
         &args.output_directory,
-        &hourly_departures,
+        &criteria_results,
     )?;
 
     Ok(())
