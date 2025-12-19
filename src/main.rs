@@ -36,7 +36,7 @@ fn main() -> Result<()> {
         &lookup,
     )?;
 
-    let hourly_departures = hour_grouping::group(record_lines, args.operating_day);
+    let hourly_departures = hour_grouping::group(record_lines, &lookup, args.operating_day);
     let criteria_results = criteria::evaluate_criteria(&hourly_departures);
     write_json_file(
         "rail_hourly_departures".to_string(),
