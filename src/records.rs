@@ -1,11 +1,12 @@
-use connectivity::{
-    PublicTransportMode, RouteDirection, SecondsPastMidnight, progress_bar_for_count,
-};
 use fs_err::read_to_string;
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Eq, collections::HashMap, hash::Hash, str::FromStr};
+
+use super::public_transport_mode::PublicTransportMode;
+use super::utils::progress_bar_for_count;
+
 
 /// Parse a CIF file from raw text format into a vector of Records where
 /// each record corresponds to a line in the CIF file.
@@ -126,6 +127,13 @@ impl FromStr for RecordIdentifier {
     }
 }
 
+/// A value for time past midnight in seconds.
+/// For example 8am is 28800 seconds past midnight.
+#[derive(
+    PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash,
+)]
+pub struct SecondsPastMidnight(pub usize);
+
 // One record per journey. A journey header may be immediately
 // followed by optional sets of date running records and journey note
 // records and should then be followed by a set of journey records
@@ -143,7 +151,6 @@ pub struct JourneyHeader {
     pub operating_days: OperatingDays,
     pub _route_number: String,
     pub _vehicle_type: PublicTransportMode,
-    pub _route_direction: RouteDirection,
 }
 
 impl JourneyHeader {
@@ -156,7 +163,6 @@ impl JourneyHeader {
             operating_days: OperatingDays::from_cif_str(&qs_string[29..36]),
             _route_number: qs_string[38..42].trim().to_string(),
             _vehicle_type: PublicTransportMode::from_str(&qs_string[48..56]).unwrap(),
-            _route_direction: RouteDirection::from_str(&qs_string[64..65]).unwrap(),
         }
     }
 }

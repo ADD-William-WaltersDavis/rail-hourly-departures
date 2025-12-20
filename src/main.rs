@@ -1,11 +1,12 @@
 mod criteria;
 mod hour_grouping;
+mod public_transport_mode;
 mod records;
 mod stops;
+mod utils;
 
 use anyhow::Result;
 use clap::Parser;
-use connectivity::write_json_file;
 
 #[derive(Parser)]
 struct Args {
@@ -30,7 +31,7 @@ fn main() -> Result<()> {
     println!("Records len: {:?}", record_lines.len());
 
     let lookup = stops::create_lookup(&record_lines);
-    write_json_file(
+    utils::write_json_file(
         "atco_stopname_lookup".to_string(),
         &args.output_directory,
         &lookup,
@@ -38,11 +39,10 @@ fn main() -> Result<()> {
 
     let hourly_departures = hour_grouping::group(record_lines, &lookup, args.operating_day);
     let criteria_results = criteria::evaluate_criteria(&hourly_departures);
-    write_json_file(
+    utils::write_json_file(
         "rail_hourly_departures".to_string(),
         &args.output_directory,
         &criteria_results,
     )?;
-
     Ok(())
 }

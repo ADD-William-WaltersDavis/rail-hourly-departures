@@ -1,9 +1,9 @@
-use connectivity::progress_bar_for_count;
 use indicatif::ProgressIterator;
 use serde::Serialize;
 use std::collections::HashMap;
 
 use super::records::{Atco, Record};
+use super::utils::progress_bar_for_count;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize)]
 pub struct StationName(pub String);

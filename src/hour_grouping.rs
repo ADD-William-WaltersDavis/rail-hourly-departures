@@ -1,10 +1,10 @@
-use connectivity::{SecondsPastMidnight, progress_bar_for_count};
 use indicatif::ProgressIterator;
 use serde::Serialize;
 use std::collections::HashMap;
 
-use super::records::{ActivityFlag, Atco, Day, JourneyHeader, Record};
+use super::records::{ActivityFlag, Atco, Day, JourneyHeader, Record, SecondsPastMidnight};
 use super::stops::StationName;
+use super::utils::progress_bar_for_count;
 
 #[derive(Clone, Debug)]
 pub struct TripStop {
