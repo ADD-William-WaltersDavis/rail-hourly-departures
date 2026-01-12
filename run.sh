@@ -5,6 +5,6 @@ set -e
 mkdir -p data
 
 time cargo run --release -- \
-	--input-file-path=input/timetables_2025_Q4_Rail.cif \
+	--input-file-dir=input \
     --operating-day=tuesday \
 	--output-directory=data
