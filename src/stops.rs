@@ -8,6 +8,30 @@ use super::utils::progress_bar_for_count;
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize)]
 pub struct StationName(pub String);
 
+impl StationName {
+    /// There are some erroneous labelling of vehicle types in CIF data which
+    /// results in some trams and such being in the bus dataset. This checks for
+    /// common erroneous stop names to help identify these.
+    pub fn contains_erroneous_name(&self) -> bool {
+        let erroneous_names = [
+            "Manchester Metrolink",
+            "Tram Stop",
+            "Tramway",
+            "Edinburgh Trams",
+            "Supertram",
+            "Metro Stop",
+            "Air-Rail",
+            "Kinneil Railway",
+            "SPT Subway Station",
+        ];
+        for erroneous_name in erroneous_names {
+            if self.0.contains(erroneous_name) {
+                return true;
+            }
+        }
+        false
+    }
+}
 pub fn create_lookup(records: &[Record]) -> HashMap<Atco, StationName> {
     let mut pt_stop_lookup: HashMap<Atco, StationName> = HashMap::new();
 

@@ -150,7 +150,7 @@ pub struct JourneyHeader {
     pub _unique_journey_identifier: String,
     pub operating_days: OperatingDays,
     pub _route_number: String,
-    pub _vehicle_type: PublicTransportMode,
+    pub vehicle_type: PublicTransportMode,
 }
 
 impl JourneyHeader {
@@ -162,7 +162,7 @@ impl JourneyHeader {
             _unique_journey_identifier: qs_string[7..13].trim().to_string(),
             operating_days: OperatingDays::from_cif_str(&qs_string[29..36]),
             _route_number: qs_string[38..42].trim().to_string(),
-            _vehicle_type: PublicTransportMode::from_str(&qs_string[48..56]).unwrap(),
+            vehicle_type: PublicTransportMode::from_str(&qs_string[48..56]).unwrap(),
         }
     }
 }

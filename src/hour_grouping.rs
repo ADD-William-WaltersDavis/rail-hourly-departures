@@ -2,6 +2,7 @@ use indicatif::ProgressIterator;
 use serde::Serialize;
 use std::collections::HashMap;
 
+use super::public_transport_mode::PublicTransportMode;
 use super::records::{ActivityFlag, Atco, Day, JourneyHeader, Record, SecondsPastMidnight};
 use super::stops::StationName;
 use super::utils::progress_bar_for_count;
@@ -75,6 +76,24 @@ pub fn group(
     hourly_departures
 }
 
+fn exclude_non_rail_based(
+    header: &JourneyHeader, 
+    stops: &[TripStop], 
+    lookup: &HashMap<Atco, StationName>
+) -> bool {
+    match header.vehicle_type {
+        PublicTransportMode::Bus | PublicTransportMode::Coach | PublicTransportMode::Ferry => {
+            let first_stop_name = &lookup[&stops[0].atco_code];
+            if first_stop_name.contains_erroneous_name() {
+                return true;
+            }
+            false
+
+        },
+        _ => true,
+    }
+}
+
 fn push_previous_trip_if_acceptable(
     hourly_departures: &mut HashMap<StationName, HourlyDepartures>,
     lookup: &HashMap<Atco, StationName>,
@@ -89,6 +108,7 @@ fn push_previous_trip_if_acceptable(
             .operating_days
             .contains(operating_day)
         && current_trip_header.as_ref().unwrap().status.is_operating()
+        && exclude_non_rail_based(current_trip_header.as_ref().unwrap(), current_trip_stops, lookup)
     {
         for (index, stop) in current_trip_stops.iter().enumerate() {
             match stop.activity_flag {
