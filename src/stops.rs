@@ -16,11 +16,10 @@ impl StationName {
         let erroneous_names = [
             "Manchester Metrolink",
             "Tram Stop",
-            "Tramway",
+            "Blackpool Tramway",
             "Edinburgh Trams",
             "Supertram",
             "Metro Stop",
-            "Air-Rail",
             "Kinneil Railway",
             "SPT Subway Station",
         ];
