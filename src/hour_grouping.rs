@@ -15,7 +15,7 @@ pub struct TripStop {
     pub is_first_stop: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct HourlyDepartures {
     pub atco_code: Atco,
     pub hour_counts: [u32; 24],

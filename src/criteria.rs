@@ -8,7 +8,7 @@ use super::hour_grouping::HourlyDepartures;
 use super::records::Atco;
 use super::stops::StationName;
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct CriteriaResults {
     pub atco_code: Atco,
     pub hour_counts: [u32; 24],
@@ -168,22 +168,35 @@ fn avg_hours_have_2_same_next_stop(range: Range<usize> , departures: &HourlyDepa
     meets_criteria
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn test_avg_meet_criteria() {
-//         let departures = HourlyDepartures {
-//             atco_code: Atco("TEST".to_string()),
-//             hour_counts: [0, 0, 0, 0, 0, 3, 3, 4, 5, 3, 5, 3, 5, 3, 5, 3, 5, 4, 5, 3, 4, 4, 4, 1],
-//             hour_counts_journey_starts: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-//             next_stop_atco: vec![Vec::new(); 24],
-//         };
-//         let mut flagged_for_review = false;
-//         let result = avg_meet_criteria(7..19, &departures, &mut flagged_for_review);
-//         assert!(result);
-//     }
+    #[test]
+    fn test_avg_meet_criteria() {
+        let departures = HourlyDepartures {
+            atco_code: Atco("TEST".to_string()),
+            hour_counts: [0, 0, 0, 0, 0, 3, 3, 4, 5, 3, 5, 3, 5, 3, 5, 3, 5, 4, 5, 3, 4, 4, 4, 1],
+            hour_counts_journey_starts: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            next_stop_atco: vec![Vec::new(); 24],
+        };
+        let mut flagged_for_review = false;
+        let result = avg_meet_criteria(7..19, &departures, &mut flagged_for_review);
+        assert!(result);
+    }
+
+    #[test]
+    fn test_all_meet_criteria() {
+        let departures = HourlyDepartures {
+            atco_code: Atco("9100KMPSTNH".to_string()),
+            hour_counts: [0, 0, 0, 0, 0, 1, 3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 3, 2, 0],
+            hour_counts_journey_starts: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            next_stop_atco: vec![Vec::new(); 24],
+        };
+        let mut flagged_for_review = false;
+        let result = all_meet_criteria(7..19, &departures, &mut flagged_for_review);
+        assert!(result);
+    }
 
 
-// }
+}

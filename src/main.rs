@@ -22,7 +22,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     let mut raw_cif_text = String::new();
-    for file in ["Bus", "Rail", "SubwayMetro", "TramStreetcarLightRail"] {
+    for file in ["timetables_2025_Q4_Rail"] {
         raw_cif_text.push_str(&records::read_file(&format!("{}/{}.cif", &args.input_file_dir, file)));
     }
 
@@ -39,7 +39,7 @@ fn main() -> Result<()> {
     let hourly_departures = hour_grouping::group(record_lines, &lookup, args.operating_day);
     let criteria_results = criteria::evaluate_criteria(&hourly_departures);
     utils::write_json_file(
-        "rail_hourly_departures".to_string(),
+        "rail_hourly_departures_testing".to_string(),
         &args.output_directory,
         &criteria_results,
     )?;
