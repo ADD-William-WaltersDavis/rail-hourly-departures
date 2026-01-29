@@ -4,45 +4,9 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Eq, collections::HashMap, hash::Hash, str::FromStr};
 
-use super::public_transport_mode::PublicTransportMode;
 use super::utils::progress_bar_for_count;
-
-
-/// Parse a CIF file from raw text format into a vector of Records where
-/// each record corresponds to a line in the CIF file.
-///
-/// Each line in the raw data starts with a two-character identifier.
-/// Can get more info on the CIF format here:
-/// https://admin.opendatani.gov.uk/dataset/6d9677cf-8d03-4851-985c-16f73f7dd5fb/resource/6c9a6067-55e5-48c7-bcdd-164d50f2ce30/download/atco-cif-spec1.pdf
-///
-/// This function reads the file, splits it into lines and parses each line
-/// into a Record structure based on its identifier.
-///
-/// Identifiers can be:
-/// QS - Journey Header
-/// QO - Journey Origin Stop
-/// QI - Journey Intermediate Stop
-/// QT - Journey Destination
-/// QL - Stop Name
-/// QB - Stop Location
-/// QR - Journey Repetition Record (not used in basemap data)
-///
-/// An example of a timetable record in CIF format:
-/// QSNNXMT3     20241007202410131111111  YEL       Metro           O
-/// QO9400ZZTWSSH10000   T1  
-/// QI9400ZZTWCHT200020002P   T1  
-/// QI9400ZZTWTYD200040004P   T1  
-/// QI9400ZZTWSIM200060006B   T1  
-/// QI9400ZZTWBDE200080008P   T1  
-/// QI9400ZZTWJRW200100010P   T1  
-/// QI9400ZZTWHBN200150015S   T1  
-/// QT9400ZZTWPLW20040   T1
-///
-/// An example of a stop name/location record in CIF format:
-/// QLN9400ZZTWSSH1South Shields (Tyne and Wear Metro Station)      B        
-/// QBN9400ZZTWSSH1436344  567224                          
-///
-pub fn parse(raw_cif_text: String, config_path: &str) -> Vec<Record> {
+    
+pub fn parse(raw_cif_text: String) -> Vec<Record> {
     println!("Parsing CIF file...");
     // Remove carriage returns and split the string into lines
     let cif = raw_cif_text.replace("\r", "");
@@ -54,7 +18,6 @@ pub fn parse(raw_cif_text: String, config_path: &str) -> Vec<Record> {
 
     println!("Number of lines: {}", cif_lines.len());
     let progress = progress_bar_for_count(cif_lines.len());
-    let atco_mapping = read_mapping(config_path);
 
     cif_lines
         .par_iter()
@@ -62,18 +25,18 @@ pub fn parse(raw_cif_text: String, config_path: &str) -> Vec<Record> {
         .filter_map(|line| {
             let record_identifier = RecordIdentifier::from_str(&line[0..2]).unwrap();
             match record_identifier {
-                RecordIdentifier::QS => {
-                    Some(Record::JourneyHeader(JourneyHeader::from_qs_str(line)))
+                RecordIdentifier::BS => {
+                    Some(Record::JourneyHeader(JourneyHeader::from_bs_str(line)))
                 }
-                RecordIdentifier::QO => JourneyRecordStop::from_qo_str(line, &atco_mapping)
-                    .map(Record::JourneyRecordStop),
-                RecordIdentifier::QI => JourneyRecordStop::from_qi_str(line, &atco_mapping)
-                    .map(Record::JourneyRecordStop),
-                RecordIdentifier::QT => JourneyRecordStop::from_qt_str(line, &atco_mapping)
-                    .map(Record::JourneyRecordStop),
-                RecordIdentifier::QL => {
-                    StopName::from_ql_str(line, &atco_mapping).map(Record::StopName)
-                }
+                // RecordIdentifier::QO => JourneyRecordStop::from_qo_str(line, &atco_mapping)
+                //     .map(Record::JourneyRecordStop),
+                // RecordIdentifier::QI => JourneyRecordStop::from_qi_str(line, &atco_mapping)
+                //     .map(Record::JourneyRecordStop),
+                // RecordIdentifier::QT => JourneyRecordStop::from_qt_str(line, &atco_mapping)
+                //     .map(Record::JourneyRecordStop),
+                // RecordIdentifier::QL => {
+                //     StopName::from_ql_str(line, &atco_mapping).map(Record::StopName)
+                // }
                 _ => None,
             }
         })
@@ -104,12 +67,14 @@ pub enum Record {
 
 #[derive(Debug)]
 pub enum RecordIdentifier {
-    QS,    // Journey Header
-    QO,    // Journey Origin Stop
-    QI,    // Journey Intermediate Stop
-    QT,    // Journey Destination Stop
-    QL,    // Stop Name
-    Other, // For any other record denotion which we don't use
+    TI, // TIPLOC Insert Record
+    TA, // TIPLOC Amend Record
+    TD, // TIPLOC Delete Record
+    BS, // Basic Schedule Record
+    LO, // Location Origin
+    LI, // Location Intermediate
+    LT, // Location Terminate
+    Other,
 }
 
 impl FromStr for RecordIdentifier {
@@ -117,11 +82,13 @@ impl FromStr for RecordIdentifier {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "QS" => Ok(RecordIdentifier::QS),
-            "QO" => Ok(RecordIdentifier::QO),
-            "QI" => Ok(RecordIdentifier::QI),
-            "QT" => Ok(RecordIdentifier::QT),
-            "QL" => Ok(RecordIdentifier::QL),
+            "TI" => Ok(RecordIdentifier::TI),
+            "TA" => Ok(RecordIdentifier::TA),
+            "TD" => Ok(RecordIdentifier::TD),
+            "BS" => Ok(RecordIdentifier::BS),
+            "LO" => Ok(RecordIdentifier::LO),
+            "LI" => Ok(RecordIdentifier::LI),
+            "LT" => Ok(RecordIdentifier::LT),
             _ => Ok(RecordIdentifier::Other),
         }
     }
@@ -142,27 +109,68 @@ pub struct SecondsPastMidnight(pub usize);
 // the journey. The entire set of records relating to a single journey
 // may be immediately followed by one or more journey repetition
 // records.
-/// Denoted by "QS" in the CIF file
+/// Denoted by "BS" in the CIF file
 #[derive(Debug, Clone)]
 pub struct JourneyHeader {
     pub status: Status,
-    pub _operator: String,
-    pub _unique_journey_identifier: String,
+    pub _uid: String,
+    pub date_runs_from: Date,
+    pub date_runs_to: Date,
     pub operating_days: OperatingDays,
-    pub _route_number: String,
-    pub vehicle_type: PublicTransportMode,
+    pub train_status: char,
+    pub category: TrainCategory,
 }
 
 impl JourneyHeader {
-    fn from_qs_str(qs_string: &str) -> Self {
-        // Parse the QS string and extract the relevant fields
+    fn from_bs_str(bs_string: &str) -> Self {
+        // Parse the BS string and extract the relevant fields
         JourneyHeader {
-            status: Status::from_str(&qs_string[2..3]).unwrap(),
-            _operator: qs_string[3..7].trim().to_string(),
-            _unique_journey_identifier: qs_string[7..13].trim().to_string(),
-            operating_days: OperatingDays::from_cif_str(&qs_string[29..36]),
-            _route_number: qs_string[38..42].trim().to_string(),
-            vehicle_type: PublicTransportMode::from_str(&qs_string[48..56]).unwrap(),
+            status: Status::from_str(&bs_string[2..3]).unwrap(),
+            _uid: bs_string[3..9].trim().to_string(),
+            date_runs_from: Date::from_str(&bs_string[9..15]).unwrap(),
+            date_runs_to: Date::from_str(&bs_string[15..21]).unwrap(),
+            operating_days: OperatingDays::from_cif_str(&bs_string[21..28]),
+            train_status: bs_string.chars().nth(29).unwrap(),
+            category: TrainCategory::from_str(&bs_string[30..32]).unwrap(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Date {
+    pub day: u8,
+    pub month: u8,
+    pub year: u8,
+}
+
+impl FromStr for Date {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let year = s[0..2].parse::<u8>().map_err(|_| ())?;
+        let month = s[2..4].parse::<u8>().map_err(|_| ())?;
+        let day = s[4..6].parse::<u8>().map_err(|_| ())?;
+        Ok(Date { day, month, year })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TrainCategory {
+    Passenger,
+    Other,
+}
+
+impl FromStr for TrainCategory {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "OL" => Ok(TrainCategory::Passenger),
+            "OU" => Ok(TrainCategory::Passenger),
+            "OO" => Ok(TrainCategory::Passenger),
+            "OS" => Ok(TrainCategory::Passenger),
+            "OW" => Ok(TrainCategory::Passenger),
+            _ => Ok(TrainCategory::Other),
         }
     }
 }
