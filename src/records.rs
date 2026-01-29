@@ -1,11 +1,12 @@
-use fs_err::read_to_string;
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{cmp::Eq, collections::HashMap, hash::Hash, str::FromStr};
+use std::{cmp::Eq, hash::Hash, str::FromStr};
 
 use super::utils::progress_bar_for_count;
-    
+
+/// Parse in the raw CIF rail timetable data
+/// See: https://wiki.openraildata.com/index.php/CIF_File_Format for details on the format
 pub fn parse(raw_cif_text: String) -> Vec<Record> {
     println!("Parsing CIF file...");
     // Remove carriage returns and split the string into lines
@@ -28,15 +29,16 @@ pub fn parse(raw_cif_text: String) -> Vec<Record> {
                 RecordIdentifier::BS => {
                     Some(Record::JourneyHeader(JourneyHeader::from_bs_str(line)))
                 }
-                // RecordIdentifier::QO => JourneyRecordStop::from_qo_str(line, &atco_mapping)
-                //     .map(Record::JourneyRecordStop),
-                // RecordIdentifier::QI => JourneyRecordStop::from_qi_str(line, &atco_mapping)
-                //     .map(Record::JourneyRecordStop),
-                // RecordIdentifier::QT => JourneyRecordStop::from_qt_str(line, &atco_mapping)
-                //     .map(Record::JourneyRecordStop),
-                // RecordIdentifier::QL => {
-                //     StopName::from_ql_str(line, &atco_mapping).map(Record::StopName)
-                // }
+                RecordIdentifier::TI => Some(Record::Stop(Stop::from_ti_str(line)?)),
+                RecordIdentifier::LO => Some(Record::JourneyRecordStop(
+                    JourneyRecordStop::from_lo_str(line)?,
+                )),
+                RecordIdentifier::LI => Some(Record::JourneyRecordStop(
+                    JourneyRecordStop::from_li_str(line)?,
+                )),
+                RecordIdentifier::LT => Some(Record::JourneyRecordStop(
+                    JourneyRecordStop::from_lt_str(line)?,
+                )),
                 _ => None,
             }
         })
@@ -47,22 +49,11 @@ pub fn read_file(file_path: &str) -> String {
     fs_err::read_to_string(file_path).expect("Something went wrong reading the file")
 }
 
-/// Loads in the ATCO to ATCO mapping from a TOML file.
-/// This file was manually created to cover all the unaligned ATCO codes in the CIF data
-/// where they do not match the NaPTAN data.
-/// The mapping ensures the stops are correctly aligned to the same stop, for example:
-/// 9100CNNBELL in the CIF files directly is mapped to 9100CNNB (Canonbury Rail Station)
-fn read_mapping(config_path: &str) -> HashMap<Atco, Atco> {
-    let file = read_to_string(format!("{}/atco_station_mappings.toml", config_path)).unwrap();
-    let atco_mapping: HashMap<Atco, Atco> = toml::from_str(&file).unwrap();
-    atco_mapping
-}
-
 #[derive(Debug)]
 pub enum Record {
     JourneyHeader(JourneyHeader),
     JourneyRecordStop(JourneyRecordStop),
-    StopName(StopName),
+    Stop(Stop),
 }
 
 #[derive(Debug)]
@@ -117,7 +108,7 @@ pub struct JourneyHeader {
     pub date_runs_from: Date,
     pub date_runs_to: Date,
     pub operating_days: OperatingDays,
-    pub train_status: char,
+    pub _train_status: char,
     pub category: TrainCategory,
 }
 
@@ -130,27 +121,21 @@ impl JourneyHeader {
             date_runs_from: Date::from_str(&bs_string[9..15]).unwrap(),
             date_runs_to: Date::from_str(&bs_string[15..21]).unwrap(),
             operating_days: OperatingDays::from_cif_str(&bs_string[21..28]),
-            train_status: bs_string.chars().nth(29).unwrap(),
+            _train_status: bs_string.chars().nth(29).unwrap(),
             category: TrainCategory::from_str(&bs_string[30..32]).unwrap(),
         }
     }
 }
 
+/// YYMMDD format date
 #[derive(Debug, Clone, PartialEq)]
-pub struct Date {
-    pub day: u8,
-    pub month: u8,
-    pub year: u8,
-}
+pub struct Date (pub usize);
 
 impl FromStr for Date {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let year = s[0..2].parse::<u8>().map_err(|_| ())?;
-        let month = s[2..4].parse::<u8>().map_err(|_| ())?;
-        let day = s[4..6].parse::<u8>().map_err(|_| ())?;
-        Ok(Date { day, month, year })
+        Ok(Date(s.parse::<usize>().unwrap()))
     }
 }
 
@@ -165,11 +150,15 @@ impl FromStr for TrainCategory {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "OL" => Ok(TrainCategory::Passenger),
-            "OU" => Ok(TrainCategory::Passenger),
-            "OO" => Ok(TrainCategory::Passenger),
-            "OS" => Ok(TrainCategory::Passenger),
-            "OW" => Ok(TrainCategory::Passenger),
+            "OL" => Ok(TrainCategory::Passenger), // London Underground/Metro Service
+            // "OU" => Ok(TrainCategory::Passenger), // Unadvertised Passenger Train
+            "OO" => Ok(TrainCategory::Passenger), // Ordinary Passenger Train
+            // "OS" => Ok(TrainCategory::Passenger), // Staff Train
+            "OW" => Ok(TrainCategory::Passenger), // Mixed
+            "XC" => Ok(TrainCategory::Passenger), // Channel Tunnel
+            "XI" => Ok(TrainCategory::Passenger), // International
+            "XX" => Ok(TrainCategory::Passenger), // Express Passenger
+            "XZ" => Ok(TrainCategory::Passenger), // Sleeper (Domestic)
             _ => Ok(TrainCategory::Other),
         }
     }
@@ -273,7 +262,7 @@ impl TimeConversion for SecondsPastMidnight {
 
 #[derive(Clone, Debug)]
 pub struct JourneyRecordStop {
-    pub atco_code: Atco,
+    pub tiploc: Tiploc,
     pub activity_flag: ActivityFlag,
     pub _arrival_time: Option<SecondsPastMidnight>,
     pub departure_time: Option<SecondsPastMidnight>,
@@ -281,67 +270,38 @@ pub struct JourneyRecordStop {
 }
 
 impl JourneyRecordStop {
-    /// Denoted by "QO" in the CIF file
-    fn from_qo_str(s: &str, atco_mapping: &HashMap<Atco, Atco>) -> Option<Self> {
-        let atco_code = Atco::from_mapped_str(&s[2..14], atco_mapping)?;
+    /// Denoted by "LO" in the CIF file
+    fn from_lo_str(s: &str) -> Option<Self> {
         Some(JourneyRecordStop {
-            atco_code,
+            tiploc: Tiploc::from_str(&s[2..9]).unwrap(),
             activity_flag: ActivityFlag::PickUpOnly, // As origin stop
             _arrival_time: None,
-            departure_time: Some(SecondsPastMidnight::from_24hr_str(&s[14..18])),
+            departure_time: Some(SecondsPastMidnight::from_24hr_str(&s[10..14])),
             is_first_stop: true,
         })
     }
-    /// Denoted by "QI" in the CIF file
-    fn from_qi_str(s: &str, atco_mapping: &HashMap<Atco, Atco>) -> Option<Self> {
-        let atco_code = Atco::from_mapped_str(&s[2..14], atco_mapping)?;
+    /// Denoted by "LI" in the CIF file
+    fn from_li_str(s: &str) -> Option<Self> {
+        if !&s[20..24].trim().is_empty() {
+            return None;
+        }
         Some(JourneyRecordStop {
-            atco_code,
-            _arrival_time: Some(SecondsPastMidnight::from_24hr_str(&s[14..18])),
-            departure_time: Some(SecondsPastMidnight::from_24hr_str(&s[18..22])),
-            activity_flag: ActivityFlag::from_str(&s[22..23]).unwrap(),
+            tiploc: Tiploc::from_str(&s[2..9]).unwrap(),
+            _arrival_time: Some(SecondsPastMidnight::from_24hr_str(&s[10..14])),
+            departure_time: Some(SecondsPastMidnight::from_24hr_str(&s[15..19])),
+            activity_flag: ActivityFlag::from_str(s[42..54].trim()).unwrap(),
             is_first_stop: false,
         })
     }
-    /// Denoted by "QT" in the CIF file
-    fn from_qt_str(s: &str, atco_mapping: &HashMap<Atco, Atco>) -> Option<Self> {
-        let atco_code = Atco::from_mapped_str(&s[2..14], atco_mapping)?;
+    /// Denoted by "LT" in the CIF file
+    fn from_lt_str(s: &str) -> Option<Self> {
         Some(JourneyRecordStop {
-            atco_code,
+            tiploc: Tiploc::from_str(&s[2..9]).unwrap(),
             activity_flag: ActivityFlag::SetDownOnly, // As final stop
-            _arrival_time: Some(SecondsPastMidnight::from_24hr_str(&s[14..18])),
+            _arrival_time: Some(SecondsPastMidnight::from_24hr_str(&s[10..14])),
             departure_time: None,
             is_first_stop: false,
         })
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize)]
-pub struct Atco(pub String);
-impl FromStr for Atco {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Atco(s.trim().to_string()))
-    }
-}
-
-impl Atco {
-    fn starts_with_999(&self) -> bool {
-        self.0.starts_with("999")
-    }
-    // Converts a string to an ATCO code, using a mapping if available where the mapping
-    // is of missing ATCO codes to their correct ATCO codes from the underlying data.
-    // TODO: Remove this fix once NaPTAN data covers all these stops.
-    fn from_mapped_str(s: &str, atco_mapping: &HashMap<Atco, Atco>) -> Option<Atco> {
-        let atco = Atco::from_str(s).unwrap();
-        // If the ATCO is to be dropped or starts with 999, return None.
-        // These have been identified as non-existent stops or 999 denotes that
-        // passengers cannot board or alight at this stop.
-        if atco.starts_with_999() {
-            return None;
-        }
-        Some(atco_mapping.get(&atco).cloned().unwrap_or(atco))
     }
 }
 
@@ -357,37 +317,83 @@ impl FromStr for ActivityFlag {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "B" => Ok(ActivityFlag::Both),
-            "P" => Ok(ActivityFlag::PickUpOnly),
-            "S" => Ok(ActivityFlag::SetDownOnly),
-            "N" => Ok(ActivityFlag::Neither),
-            _ => Err(()),
+        // TODO: Handle all the other cases properly
+        if s.is_empty() {
+            return Ok(ActivityFlag::Neither)
+        }
+        if s.len() == 1 {
+            match s {
+                "T" => Ok(ActivityFlag::Both),
+                "R" => Ok(ActivityFlag::Both), // "Request Stop" treated as Both
+                "D" => Ok(ActivityFlag::SetDownOnly),
+                "U" => Ok(ActivityFlag::PickUpOnly),
+                _ => Ok(ActivityFlag::Neither),
+            }
+        } else {
+            let first_two_chars = &s[0..2];
+            match first_two_chars {
+                "T " => Ok(ActivityFlag::Both),
+                "R " => Ok(ActivityFlag::Both), // "Request Stop" treated as Both
+                "D " => Ok(ActivityFlag::SetDownOnly),
+                "U " => Ok(ActivityFlag::PickUpOnly),
+                _ => Ok(ActivityFlag::Neither),
+            }
         }
     }
 }
 
-/// Denoted by "QL" in the CIF file
-#[derive(Debug)]
-pub struct StopName {
-    pub _status: Status,
-    pub atco_code: Atco,
-    pub name: String,
+#[derive(Deserialize, Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct ThreeAlphaCode (pub String);
+
+impl FromStr for ThreeAlphaCode {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(ThreeAlphaCode(s.to_string()))
+    }
 }
 
-impl StopName {
-    fn from_ql_str(ql_string: &str, atco_mapping: &HashMap<Atco, Atco>) -> Option<Self> {
-        let atco_code = Atco::from_str(&ql_string[3..15]).unwrap();
-        // Drop the record if the ATCO code is already in the mapping as we will use the
-        // mapped stop instead of this one.
-        if atco_mapping.get(&atco_code).is_some() || atco_code.starts_with_999() {
-            return None;
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct Tiploc (pub String);
+
+impl FromStr for Tiploc {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.trim().is_empty() {
+            Err(())
+        } else {
+            Ok(Tiploc(s.trim().to_string()))
         }
+    }
+}
+/// Denoted by "QL" in the CIF file
+#[derive(Debug)]
+pub struct Stop {
+    pub tiploc: Tiploc,
+    pub _nlc: String, // National Location Code
+    pub _tps_description: String,
+    pub stanox: String,
+    pub three_alpha_code: Option<ThreeAlphaCode>,
+    pub _nlc_description: String,
+}
+
+impl Stop {
+    fn from_ti_str(ti_string: &str) -> Option<Self> {
         // Parse the QL string and extract the relevant fields
-        Some(StopName {
-            _status: Status::from_str(&ql_string[2..3]).unwrap(),
-            atco_code,
-            name: ql_string[15..63].trim().replace(",", "").to_string(),
+        let three_alpha_code_str = ti_string[53..56].trim();
+        let three_alpha_code = if three_alpha_code_str.is_empty() {
+            None
+        } else {
+            Some(ThreeAlphaCode::from_str(three_alpha_code_str).unwrap())
+        };
+        Some(Stop {
+            tiploc: Tiploc::from_str(&ti_string[2..9]).unwrap(),
+            _nlc: ti_string[11..17].trim().to_string(),
+            _tps_description: ti_string[18..44].trim().to_string(),
+            stanox: ti_string[44..49].trim().to_string(),
+            three_alpha_code,
+            _nlc_description: ti_string[56..72].trim().to_string(),
         })
     }
 }

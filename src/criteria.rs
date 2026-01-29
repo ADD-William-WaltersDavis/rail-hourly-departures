@@ -5,12 +5,11 @@ use std::{
 };
 
 use super::hour_grouping::HourlyDepartures;
-use super::records::Atco;
-use super::stops::StationName;
+use super::records::ThreeAlphaCode;
 
 #[derive(Debug, Serialize)]
 pub struct CriteriaResults {
-    pub atco_code: Atco,
+    pub three_alpha_code: ThreeAlphaCode,
     pub hour_counts: [u32; 24],
     pub hour_counts_journey_starts: [u32; 24],
     pub all_7_7: bool,
@@ -18,18 +17,18 @@ pub struct CriteriaResults {
     pub avg_7_7: bool,
     pub avg_6_10: bool,
     pub flagged_for_review: bool,
-    pub next_stop_atco: Option<Vec<Vec<Atco>>>,
+    pub next_stop_three_alpha_code: Option<Vec<Vec<ThreeAlphaCode>>>,
 }
 
 pub fn evaluate_criteria(
-    departures: &HashMap<StationName, HourlyDepartures>,
-) -> HashMap<StationName, CriteriaResults> {
-    let mut results: HashMap<StationName, CriteriaResults> = HashMap::new();
+    departures: &HashMap<ThreeAlphaCode, HourlyDepartures>,
+) -> HashMap<ThreeAlphaCode, CriteriaResults> {
+    let mut results: HashMap<ThreeAlphaCode, CriteriaResults> = HashMap::new();
 
-    for (station_name, hourly_departure) in departures.iter() {
+    for (three_alpha_code, hourly_departure) in departures.iter() {
         let mut flagged_for_review = false;
         let mut criteria_result = CriteriaResults {
-            atco_code: hourly_departure.atco_code.clone(),
+            three_alpha_code: hourly_departure.three_alpha_code.clone(),
             hour_counts: hourly_departure.hour_counts,
             hour_counts_journey_starts: hourly_departure.hour_counts_journey_starts,
             all_7_7: all_meet_criteria(7..19, hourly_departure, &mut flagged_for_review),
@@ -37,13 +36,13 @@ pub fn evaluate_criteria(
             avg_7_7: avg_meet_criteria(7..19, hourly_departure, &mut flagged_for_review),
             avg_6_10: avg_meet_criteria(6..22, hourly_departure, &mut flagged_for_review),
             flagged_for_review: false,
-            next_stop_atco: None,
+            next_stop_three_alpha_code: None,
         };
         criteria_result.flagged_for_review = flagged_for_review;
         if flagged_for_review {
-            criteria_result.next_stop_atco = Some(hourly_departure.next_stop_atco.clone());
+            criteria_result.next_stop_three_alpha_code = Some(hourly_departure.next_stop_three_alpha_code.clone());
         }
-        results.insert(station_name.clone(), criteria_result);
+        results.insert(three_alpha_code.clone(), criteria_result);
     }
 
     results
@@ -70,14 +69,14 @@ fn all_meet_criteria(range: Range<usize>, departures: &HourlyDepartures, flagged
 
 fn all_hours_have_2_same_next_stop(range: Range<usize> , departures: &HourlyDepartures, flagged_for_review: &mut bool) -> bool {
     // Get sum for each next station at each hour in range
-    let mut next_station_counts: Vec<HashMap<Atco, u32>> = Vec::with_capacity(range.len());
-    let mut unique_stations: HashSet<Atco> = HashSet::new();
+    let mut next_station_counts: Vec<HashMap<ThreeAlphaCode, u32>> = Vec::with_capacity(range.len());
+    let mut unique_stations: HashSet<ThreeAlphaCode> = HashSet::new();
 
     for hour in range {
-        let mut hour_map: HashMap<Atco, u32> = HashMap::new();
-        for atco in departures.next_stop_atco[hour].iter() {
-            *hour_map.entry(atco.clone()).or_insert(0) += 1;
-            unique_stations.insert(atco.clone());
+        let mut hour_map: HashMap<ThreeAlphaCode, u32> = HashMap::new();
+        for three_alpha_code in departures.next_stop_three_alpha_code[hour].iter() {
+            *hour_map.entry(three_alpha_code.clone()).or_insert(0) += 1;
+            unique_stations.insert(three_alpha_code.clone());
         }
         next_station_counts.push(hour_map);
     }
@@ -140,11 +139,11 @@ fn avg_meet_criteria(range: Range<usize>, departures: &HourlyDepartures, flagged
 
 fn avg_hours_have_2_same_next_stop(range: Range<usize> , departures: &HourlyDepartures, flagged_for_review: &mut bool) -> bool {
     // Get sum for each next station at each hour in range
-    let mut next_station_counts: HashMap<Atco, u32> = HashMap::new();
+    let mut next_station_counts: HashMap<ThreeAlphaCode, u32> = HashMap::new();
 
     for hour in range.clone() {
-        for atco in departures.next_stop_atco[hour].iter() {
-            *next_station_counts.entry(atco.clone()).or_insert(0) += 1;
+        for three_alpha_code in departures.next_stop_three_alpha_code[hour].iter() {
+            *next_station_counts.entry(three_alpha_code.clone()).or_insert(0) += 1;
         }
     }
 
@@ -175,10 +174,10 @@ mod tests {
     #[test]
     fn test_avg_meet_criteria() {
         let departures = HourlyDepartures {
-            atco_code: Atco("TEST".to_string()),
+            three_alpha_code: ThreeAlphaCode("TEST".to_string()),
             hour_counts: [0, 0, 0, 0, 0, 3, 3, 4, 5, 3, 5, 3, 5, 3, 5, 3, 5, 4, 5, 3, 4, 4, 4, 1],
             hour_counts_journey_starts: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            next_stop_atco: vec![Vec::new(); 24],
+            next_stop_three_alpha_code: vec![Vec::new(); 24],
         };
         let mut flagged_for_review = false;
         let result = avg_meet_criteria(7..19, &departures, &mut flagged_for_review);
@@ -188,10 +187,10 @@ mod tests {
     #[test]
     fn test_all_meet_criteria() {
         let departures = HourlyDepartures {
-            atco_code: Atco("9100KMPSTNH".to_string()),
+            three_alpha_code: ThreeAlphaCode("9100KMPSTNH".to_string()),
             hour_counts: [0, 0, 0, 0, 0, 1, 3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 3, 2, 0],
             hour_counts_journey_starts: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            next_stop_atco: vec![Vec::new(); 24],
+            next_stop_three_alpha_code: vec![Vec::new(); 24],
         };
         let mut flagged_for_review = false;
         let result = all_meet_criteria(7..19, &departures, &mut flagged_for_review);

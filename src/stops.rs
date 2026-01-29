@@ -1,49 +1,57 @@
 use indicatif::ProgressIterator;
-use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use super::records::{Atco, Record};
+use super::records::{Record, ThreeAlphaCode, Tiploc};
 use super::utils::progress_bar_for_count;
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize)]
-pub struct StationName(pub String);
+pub fn create_lookup(
+    records: &[Record],
+    gb_station_three_alpha_codes: &[ThreeAlphaCode],
+) -> HashMap<Tiploc, ThreeAlphaCode> {
+    let stanox_lookup = create_stanox_lookup(records, gb_station_three_alpha_codes);
 
-impl StationName {
-    /// There are some erroneous labelling of vehicle types in CIF data which
-    /// results in some trams and such being in the bus dataset. This checks for
-    /// common erroneous stop names to help identify these.
-    pub fn contains_erroneous_name(&self) -> bool {
-        let erroneous_names = [
-            "Manchester Metrolink",
-            "Tram Stop",
-            "Blackpool Tramway",
-            "Edinburgh Trams",
-            "Supertram",
-            "Metro Stop",
-            "Kinneil Railway",
-            "SPT Subway Station",
-        ];
-        for erroneous_name in erroneous_names {
-            if self.0.contains(erroneous_name) {
-                return true;
-            }
-        }
-        false
-    }
-}
-pub fn create_lookup(records: &[Record]) -> HashMap<Atco, StationName> {
-    let mut pt_stop_lookup: HashMap<Atco, StationName> = HashMap::new();
+    let mut rail_stop_lookup: HashMap<Tiploc, ThreeAlphaCode> = HashMap::new();
 
-    println!("Adding stop names...");
+    println!("Creating rail stop lookup");
     let progress = progress_bar_for_count(records.len());
     for record in records.iter().progress_with(progress) {
-        if let Record::StopName(stop_name) = record {
-            pt_stop_lookup
-                .entry(stop_name.atco_code.clone())
-                .or_insert_with(|| StationName(stop_name.name.clone()));
+        if let Record::Stop(stop) = record {
+            if let Some(three_alpha_code) = stanox_lookup.get(&stop.stanox) {
+                rail_stop_lookup
+                    .entry(stop.tiploc.clone())
+                    .or_insert_with(|| three_alpha_code.clone());
+            }
         }
     }
 
-    println!("PT Stop Lookup len: {:?}", pt_stop_lookup.len());
-    pt_stop_lookup
+    println!("Rail Stop Lookup len: {:?}", rail_stop_lookup.len());
+    rail_stop_lookup
+}
+
+fn create_stanox_lookup(
+    records: &[Record],
+    gb_station_three_alpha_codes: &[ThreeAlphaCode],
+) -> HashMap<String, ThreeAlphaCode> {
+    let mut stanox_lookup: HashMap<String, ThreeAlphaCode> = HashMap::new();
+
+    let three_alpha_code_set: HashSet<&ThreeAlphaCode> =
+        gb_station_three_alpha_codes.iter().collect();
+
+    println!("Creating stanox lookup");
+    let progress = progress_bar_for_count(records.len());
+    for record in records.iter().progress_with(progress) {
+        if let Record::Stop(stop) = record {
+            if let Some(three_alpha_code) = &stop.three_alpha_code {
+                if !three_alpha_code_set.contains(three_alpha_code) {
+                    continue;
+                }
+                stanox_lookup
+                    .entry(stop.stanox.clone())
+                    .or_insert_with(|| three_alpha_code.clone());
+            }
+        }
+    }
+
+    println!("Stanox Lookup len: {:?}", stanox_lookup.len());
+    stanox_lookup
 }
