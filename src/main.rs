@@ -33,7 +33,7 @@ fn main() -> Result<()> {
     println!("Records len: {:?}", record_lines.len());
 
     let gb_station_three_alpha_codes: Vec<records::ThreeAlphaCode> = utils::read_json_file(
-        format!("{}/gb_station_three_alpha_codes.json", &args.input_file_dir),
+        "config/gb_station_three_alpha_codes.json".to_string(),
     )?;
     let lookup = stops::create_lookup(&record_lines, &gb_station_three_alpha_codes);
 
