@@ -2,7 +2,10 @@ use indicatif::ProgressIterator;
 use serde::Serialize;
 use std::collections::HashMap;
 
-use super::records::{ActivityFlag, Date, Day, JourneyHeader, Record, SecondsPastMidnight, ThreeAlphaCode, Tiploc, TrainCategory};
+use super::records::{
+    ActivityFlag, Date, Day, JourneyHeader, Record, SecondsPastMidnight, ThreeAlphaCode, Tiploc,
+    TrainCategory,
+};
 use super::utils::progress_bar_for_count;
 
 #[derive(Clone, Debug)]
@@ -107,11 +110,12 @@ fn push_previous_trip_if_acceptable(
         for (index, stop) in current_trip_stops.iter().enumerate() {
             match stop.activity_flag {
                 ActivityFlag::PickUpOnly | ActivityFlag::Both => {
-                    let next_stop_three_alpha_code: Option<ThreeAlphaCode> = if index < current_trip_stops.len() - 1 {
-                        Some(current_trip_stops[index + 1].three_alpha_code.clone())
-                    } else {
-                        None
-                    };
+                    let next_stop_three_alpha_code: Option<ThreeAlphaCode> =
+                        if index < current_trip_stops.len() - 1 {
+                            Some(current_trip_stops[index + 1].three_alpha_code.clone())
+                        } else {
+                            None
+                        };
                     add_departure_hour_count(hourly_departures, stop, next_stop_three_alpha_code);
                 }
                 _ => {}

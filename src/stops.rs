@@ -15,7 +15,9 @@ pub fn create_lookup(
     println!("Creating rail stop lookup");
     let progress = progress_bar_for_count(records.len());
     for record in records.iter().progress_with(progress) {
-        if let Record::Stop(stop) = record && let Some(three_alpha_code) = stanox_lookup.get(&stop.stanox) {
+        if let Record::Stop(stop) = record
+            && let Some(three_alpha_code) = stanox_lookup.get(&stop.stanox)
+        {
             rail_stop_lookup
                 .entry(stop.tiploc.clone())
                 .or_insert_with(|| three_alpha_code.clone());
@@ -38,7 +40,9 @@ fn create_stanox_lookup(
     println!("Creating stanox lookup");
     let progress = progress_bar_for_count(records.len());
     for record in records.iter().progress_with(progress) {
-        if let Record::Stop(stop) = record && let Some(three_alpha_code) = &stop.three_alpha_code {
+        if let Record::Stop(stop) = record
+            && let Some(three_alpha_code) = &stop.three_alpha_code
+        {
             if !three_alpha_code_set.contains(three_alpha_code) {
                 continue;
             }

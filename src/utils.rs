@@ -1,7 +1,7 @@
 use anyhow::Result;
 use fs_err::File;
 use indicatif::{ProgressBar, ProgressStyle};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::io::{BufReader, BufWriter, Write};
 
 /// Creates a progress bar for monitoring function progress.

@@ -87,9 +87,7 @@ impl FromStr for RecordIdentifier {
 
 /// A value for time past midnight in seconds.
 /// For example 8am is 28800 seconds past midnight.
-#[derive(
-    PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash,
-)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash)]
 pub struct SecondsPastMidnight(pub usize);
 
 // One record per journey. A journey header may be immediately
@@ -129,7 +127,7 @@ impl JourneyHeader {
 
 /// YYMMDD format date
 #[derive(Debug, Clone, PartialEq)]
-pub struct Date (pub usize);
+pub struct Date(pub usize);
 
 impl FromStr for Date {
     type Err = ();
@@ -319,7 +317,7 @@ impl FromStr for ActivityFlag {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // TODO: Handle all the other cases properly
         if s.is_empty() {
-            return Ok(ActivityFlag::Neither)
+            return Ok(ActivityFlag::Neither);
         }
         if s.len() == 1 {
             match s {
@@ -343,7 +341,7 @@ impl FromStr for ActivityFlag {
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-pub struct ThreeAlphaCode (pub String);
+pub struct ThreeAlphaCode(pub String);
 
 impl FromStr for ThreeAlphaCode {
     type Err = ();
@@ -354,7 +352,7 @@ impl FromStr for ThreeAlphaCode {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-pub struct Tiploc (pub String);
+pub struct Tiploc(pub String);
 
 impl FromStr for Tiploc {
     type Err = ();

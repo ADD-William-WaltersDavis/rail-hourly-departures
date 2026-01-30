@@ -40,7 +40,8 @@ pub fn evaluate_criteria(
         };
         criteria_result.flagged_for_review = flagged_for_review;
         if flagged_for_review {
-            criteria_result.next_stop_three_alpha_code = Some(hourly_departure.next_stop_three_alpha_code.clone());
+            criteria_result.next_stop_three_alpha_code =
+                Some(hourly_departure.next_stop_three_alpha_code.clone());
         }
         results.insert(three_alpha_code.clone(), criteria_result);
     }
@@ -48,7 +49,11 @@ pub fn evaluate_criteria(
     results
 }
 
-fn all_meet_criteria(range: Range<usize>, departures: &HourlyDepartures, flagged_for_review: &mut bool) -> bool {
+fn all_meet_criteria(
+    range: Range<usize>,
+    departures: &HourlyDepartures,
+    flagged_for_review: &mut bool,
+) -> bool {
     // Each station which has more than four departures per hour (or more than 2 at the start of
     // their route) for every hour within the range
     let mut criteria_met = true;
@@ -67,9 +72,14 @@ fn all_meet_criteria(range: Range<usize>, departures: &HourlyDepartures, flagged
     criteria_met
 }
 
-fn all_hours_have_2_same_next_stop(range: Range<usize> , departures: &HourlyDepartures, flagged_for_review: &mut bool) -> bool {
+fn all_hours_have_2_same_next_stop(
+    range: Range<usize>,
+    departures: &HourlyDepartures,
+    flagged_for_review: &mut bool,
+) -> bool {
     // Get sum for each next station at each hour in range
-    let mut next_station_counts: Vec<HashMap<ThreeAlphaCode, u32>> = Vec::with_capacity(range.len());
+    let mut next_station_counts: Vec<HashMap<ThreeAlphaCode, u32>> =
+        Vec::with_capacity(range.len());
     let mut unique_stations: HashSet<ThreeAlphaCode> = HashSet::new();
 
     for hour in range {
@@ -106,7 +116,7 @@ fn all_hours_have_2_same_next_stop(range: Range<usize> , departures: &HourlyDepa
 
     // If not meeting criteria, but there are three stations at each hour, flag for review
     // This could be caused by a two services inthe same direction leaving within the hour,
-    // but having different next stops 
+    // but having different next stops
     if !meets_criteria {
         let mut all_hours_have_three_unique = true;
         for hour_map in next_station_counts.iter() {
@@ -122,12 +132,22 @@ fn all_hours_have_2_same_next_stop(range: Range<usize> , departures: &HourlyDepa
     meets_criteria
 }
 
-fn avg_meet_criteria(range: Range<usize>, departures: &HourlyDepartures, flagged_for_review: &mut bool) -> bool {
-    // Each station which has an average of 4 departures or more (i.e. an average of four per hour) or 
+fn avg_meet_criteria(
+    range: Range<usize>,
+    departures: &HourlyDepartures,
+    flagged_for_review: &mut bool,
+) -> bool {
+    // Each station which has an average of 4 departures or more (i.e. an average of four per hour) or
     // an average of 2+ at the start of their route across the hours in the range
-    let total: u32 = range.clone().map(|hour| {
-        u32::max(departures.hour_counts[hour], departures.hour_counts_journey_starts[hour] * 2)
-    }).sum();
+    let total: u32 = range
+        .clone()
+        .map(|hour| {
+            u32::max(
+                departures.hour_counts[hour],
+                departures.hour_counts_journey_starts[hour] * 2,
+            )
+        })
+        .sum();
     let mut criteria_met = total >= (range.len() * 4) as u32;
 
     // If not met, check if average of 2+ departures to the same next stop
@@ -137,13 +157,19 @@ fn avg_meet_criteria(range: Range<usize>, departures: &HourlyDepartures, flagged
     criteria_met
 }
 
-fn avg_hours_have_2_same_next_stop(range: Range<usize> , departures: &HourlyDepartures, flagged_for_review: &mut bool) -> bool {
+fn avg_hours_have_2_same_next_stop(
+    range: Range<usize>,
+    departures: &HourlyDepartures,
+    flagged_for_review: &mut bool,
+) -> bool {
     // Get sum for each next station at each hour in range
     let mut next_station_counts: HashMap<ThreeAlphaCode, u32> = HashMap::new();
 
     for hour in range.clone() {
         for three_alpha_code in departures.next_stop_three_alpha_code[hour].iter() {
-            *next_station_counts.entry(three_alpha_code.clone()).or_insert(0) += 1;
+            *next_station_counts
+                .entry(three_alpha_code.clone())
+                .or_insert(0) += 1;
         }
     }
 
@@ -175,8 +201,12 @@ mod tests {
     fn test_avg_meet_criteria() {
         let departures = HourlyDepartures {
             three_alpha_code: ThreeAlphaCode("TEST".to_string()),
-            hour_counts: [0, 0, 0, 0, 0, 3, 3, 4, 5, 3, 5, 3, 5, 3, 5, 3, 5, 4, 5, 3, 4, 4, 4, 1],
-            hour_counts_journey_starts: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            hour_counts: [
+                0, 0, 0, 0, 0, 3, 3, 4, 5, 3, 5, 3, 5, 3, 5, 3, 5, 4, 5, 3, 4, 4, 4, 1,
+            ],
+            hour_counts_journey_starts: [
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ],
             next_stop_three_alpha_code: vec![Vec::new(); 24],
         };
         let mut flagged_for_review = false;
@@ -188,14 +218,16 @@ mod tests {
     fn test_all_meet_criteria() {
         let departures = HourlyDepartures {
             three_alpha_code: ThreeAlphaCode("9100KMPSTNH".to_string()),
-            hour_counts: [0, 0, 0, 0, 0, 1, 3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 3, 2, 0],
-            hour_counts_journey_starts: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            hour_counts: [
+                0, 0, 0, 0, 0, 1, 3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 3, 2, 0,
+            ],
+            hour_counts_journey_starts: [
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ],
             next_stop_three_alpha_code: vec![Vec::new(); 24],
         };
         let mut flagged_for_review = false;
         let result = all_meet_criteria(7..19, &departures, &mut flagged_for_review);
         assert!(result);
     }
-
-
 }
