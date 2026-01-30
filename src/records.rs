@@ -126,7 +126,7 @@ impl JourneyHeader {
 }
 
 /// YYMMDD format date
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 pub struct Date(pub usize);
 
 impl FromStr for Date {
@@ -135,6 +135,12 @@ impl FromStr for Date {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Date(s.parse::<usize>().unwrap()))
     }
+}
+
+pub fn parse_date(s: &str) -> Result<Date, String> {
+    s.parse::<usize>()
+        .map(Date)
+        .map_err(|e| format!("Invalid date format: {}", e))
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -15,6 +15,8 @@ struct Args {
     operating_day: records::Day,
     #[clap(long)]
     output_directory: String,
+    #[clap(long, value_parser = records::parse_date)]
+    operating_week: records::Date,
 }
 
 fn main() -> Result<()> {
@@ -39,7 +41,7 @@ fn main() -> Result<()> {
         hour_grouping::group(record_lines, &lookup, args.operating_day, selected_date);
     let criteria_results = criteria::evaluate_criteria(&hourly_departures);
     utils::write_json_file(
-        "network_rail".to_string(),
+        "rail_hourly_departures".to_string(),
         &args.output_directory,
         &criteria_results,
     )?;
