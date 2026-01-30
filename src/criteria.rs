@@ -195,12 +195,13 @@ fn avg_hours_have_2_same_next_stop(
 
 #[cfg(test)]
 mod tests {
+    // TODO: add full coverage of tests
     use super::*;
 
     #[test]
     fn test_avg_meet_criteria() {
         let departures = HourlyDepartures {
-            three_alpha_code: ThreeAlphaCode("TEST".to_string()),
+            three_alpha_code: ThreeAlphaCode("TST".to_string()),
             hour_counts: [
                 0, 0, 0, 0, 0, 3, 3, 4, 5, 3, 5, 3, 5, 3, 5, 3, 5, 4, 5, 3, 4, 4, 4, 1,
             ],
@@ -209,15 +210,28 @@ mod tests {
             ],
             next_stop_three_alpha_code: vec![Vec::new(); 24],
         };
-        let mut flagged_for_review = false;
-        let result = avg_meet_criteria(7..19, &departures, &mut flagged_for_review);
-        assert!(result);
+        assert!(avg_meet_criteria(7..19, &departures, &mut false));
+    }
+
+    #[test]
+    fn test_avg_meet_criteria_journey_starts() {
+        let departures = HourlyDepartures {
+            three_alpha_code: ThreeAlphaCode("TST".to_string()),
+            hour_counts: [
+                0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            ],
+            hour_counts_journey_starts: [
+                0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            ],
+            next_stop_three_alpha_code: vec![Vec::new(); 24],
+        };
+        assert!(avg_meet_criteria(6..22, &departures, &mut false));
     }
 
     #[test]
     fn test_all_meet_criteria() {
         let departures = HourlyDepartures {
-            three_alpha_code: ThreeAlphaCode("9100KMPSTNH".to_string()),
+            three_alpha_code: ThreeAlphaCode("TST".to_string()),
             hour_counts: [
                 0, 0, 0, 0, 0, 1, 3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 3, 2, 0,
             ],
@@ -226,8 +240,21 @@ mod tests {
             ],
             next_stop_three_alpha_code: vec![Vec::new(); 24],
         };
-        let mut flagged_for_review = false;
-        let result = all_meet_criteria(7..19, &departures, &mut flagged_for_review);
-        assert!(result);
+        assert!(!all_meet_criteria(7..19, &departures, &mut false));
+    }
+
+    #[test]
+    fn test_all_meet_criteria_journey_starts() {
+        let departures = HourlyDepartures {
+            three_alpha_code: ThreeAlphaCode("TST".to_string()),
+            hour_counts: [
+                0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            ],
+            hour_counts_journey_starts: [
+                0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+            ],
+            next_stop_three_alpha_code: vec![Vec::new(); 24],
+        };
+        assert!(!all_meet_criteria(7..19, &departures, &mut false));
     }
 }

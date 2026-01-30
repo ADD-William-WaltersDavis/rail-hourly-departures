@@ -353,6 +353,9 @@ impl FromStr for ThreeAlphaCode {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() != 3 {
+            return Err(());
+        }
         Ok(ThreeAlphaCode(s.to_string()))
     }
 }
