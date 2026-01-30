@@ -1,8 +1,8 @@
 use anyhow::Result;
 use fs_err::File;
 use indicatif::{ProgressBar, ProgressStyle};
-use serde::Serialize;
-use std::io::{BufWriter, Write};
+use serde::{Serialize, de::DeserializeOwned};
+use std::io::{BufReader, BufWriter, Write};
 
 /// Creates a progress bar for monitoring function progress.
 pub fn progress_bar_for_count(count: usize) -> ProgressBar {
@@ -22,4 +22,17 @@ pub fn write_json_file<T: Serialize>(
     serde_json::to_writer(&mut writer, &data)?;
     writer.flush()?;
     Ok(())
+}
+
+pub fn read_json_file<T: DeserializeOwned>(path: String) -> Result<T> {
+    if !path.ends_with(".json") && !path.ends_with(".geojson") {
+        return Err(anyhow::anyhow!(
+            "read_json_file needs {} to end with .json or .geojson",
+            path
+        ));
+    }
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    let data = serde_json::from_reader(reader)?;
+    Ok(data)
 }
