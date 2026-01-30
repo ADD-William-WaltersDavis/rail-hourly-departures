@@ -27,8 +27,8 @@ pub struct HourlyDepartures {
 pub fn group(
     records: Vec<Record>,
     lookup: &HashMap<Tiploc, ThreeAlphaCode>,
-    day: Day,
-    date: Date,
+    day: &Day,
+    date: &Date,
 ) -> HashMap<ThreeAlphaCode, HourlyDepartures> {
     let mut hourly_departures: HashMap<ThreeAlphaCode, HourlyDepartures> = HashMap::new();
 
@@ -43,8 +43,8 @@ pub fn group(
                     &mut hourly_departures,
                     &current_trip_header,
                     &current_trip_stops,
-                    &day,
-                    &date,
+                    day,
+                    date,
                 );
                 current_trip_header = Some(header.clone());
                 current_trip_stops.clear();
@@ -76,8 +76,8 @@ pub fn group(
         &mut hourly_departures,
         &current_trip_header,
         &current_trip_stops,
-        &day,
-        &date,
+        day,
+        date,
     );
     hourly_departures
 }

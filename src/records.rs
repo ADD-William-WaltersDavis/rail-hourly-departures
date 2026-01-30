@@ -137,6 +137,12 @@ impl FromStr for Date {
     }
 }
 
+impl ToString for Date {
+    fn to_string(&self) -> String {
+        format!("{:06}", self.0)
+    }
+}
+
 pub fn parse_date(s: &str) -> Result<Date, String> {
     s.parse::<usize>()
         .map(Date)
@@ -248,6 +254,20 @@ impl FromStr for Day {
             "Saturday" => Ok(Day::Saturday),
             "Sunday" => Ok(Day::Sunday),
             _ => Err(()),
+        }
+    }
+}
+
+impl ToString for Day {
+    fn to_string(&self) -> String {
+        match self {
+            Day::Monday => "Monday".to_string(),
+            Day::Tuesday => "Tuesday".to_string(),
+            Day::Wednesday => "Wednesday".to_string(),
+            Day::Thursday => "Thursday".to_string(),
+            Day::Friday => "Friday".to_string(),
+            Day::Saturday => "Saturday".to_string(),
+            Day::Sunday => "Sunday".to_string(),
         }
     }
 }

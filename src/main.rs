@@ -21,9 +21,7 @@ struct Args {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-
-    let selected_date = records::Date(260113);
-
+    
     let raw_cif_text = records::read_file(&format!(
         "{}/{}.CIF",
         &args.input_file_dir, "CIF_ALL_FULL_DAILY_toc-full"
@@ -38,10 +36,10 @@ fn main() -> Result<()> {
     let lookup = stops::create_lookup(&record_lines, &gb_station_three_alpha_codes);
 
     let hourly_departures =
-        hour_grouping::group(record_lines, &lookup, args.operating_day, selected_date);
+        hour_grouping::group(record_lines, &lookup, &args.operating_day, &args.operating_week);
     let criteria_results = criteria::evaluate_criteria(&hourly_departures);
     utils::write_json_file(
-        "rail_hourly_departures".to_string(),
+        format!("rail_hourly_departures_{}_{}", args.operating_day.to_string(), args.operating_week.to_string()),
         &args.output_directory,
         &criteria_results,
     )?;
